@@ -1,0 +1,25 @@
+# ─── Block access to sensitive files ─────────────────────────────────────────
+
+# Block .env files
+<FilesMatch "^\.env">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block rate-limit log
+<FilesMatch "^rate_limit\.json$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block Composer files
+<FilesMatch "^composer\.(json|lock)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block vendor directory access to non-PHP
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^vendor/ - [F,L]
+</IfModule>

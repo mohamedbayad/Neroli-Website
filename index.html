@@ -498,6 +498,15 @@
 
                     <form id="whatsapp-form" onsubmit="handleFormSubmit(event)" class="border border-[#121212]/20">
 
+                        <!-- Security: CSRF Token (populated via JS) -->
+                        <input type="hidden" id="csrf_token" name="csrf_token" value="">
+
+                        <!-- Security: Honeypot — invisible to humans, bots auto-fill it -->
+                        <div style="display:none !important" aria-hidden="true">
+                            <label for="website">Leave this empty</label>
+                            <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                        </div>
+
                         <div class="p-12 text-center border-b border-[#121212]/20">
                             <h2 class="text-4xl md:text-5xl font-[Cormorant] italic">Let your story begin here.</h2>
                             <p class="mt-6 text-stone font-sans text-sm max-w-xl mx-auto">Feel like we could be the
@@ -571,14 +580,38 @@
         class="fixed inset-0 z-[11000] hidden items-center justify-center bg-ink/90 backdrop-blur-sm transition-opacity duration-300 opacity-0">
         <div
             class="bg-nude border border-gold p-12 text-center max-w-md mx-4 relative transform scale-95 transition-transform duration-300">
-            <p class="text-xs font-sans uppercase tracking-widest text-gold mb-4">Thank you</p>
-            <h3 class="text-3xl md:text-4xl font-serif italic text-ink mb-6">Redirecting to Concierge</h3>
 
-            <div class="w-full bg-sable h-[1px] mb-6"></div>
+            <!-- LOADING STATE -->
+            <div id="overlay-loading">
+                <p class="text-xs font-sans uppercase tracking-widest text-gold mb-4">Please wait</p>
+                <h3 class="text-3xl md:text-4xl font-serif italic text-ink mb-6">Sending your message…</h3>
+                <div class="w-full bg-sable h-[1px] mb-6"></div>
+                <div class="flex justify-center">
+                    <svg class="animate-spin h-8 w-8 text-gold" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                    </svg>
+                </div>
+            </div>
 
-            <p class="text-stone font-sans text-sm mb-8">Please wait while we prepare your inquiry...</p>
+            <!-- SUCCESS STATE (hidden by default) -->
+            <div id="overlay-success" class="hidden">
+                <p class="text-xs font-sans uppercase tracking-widest text-gold mb-4">Message Sent</p>
+                <h3 class="text-3xl md:text-4xl font-serif italic text-ink mb-6">We'll be in touch soon.</h3>
+                <div class="w-full bg-sable h-[1px] mb-6"></div>
+                <p class="text-stone font-sans text-sm mb-8">Thank you for reaching out. We will respond within 24 hours.</p>
+                <button onclick="closeOverlay()" class="text-xs uppercase tracking-widest border-b border-ink pb-1 w-fit hover:text-gold transition font-sans">Close</button>
+            </div>
 
-            <div class="text-5xl font-serif text-gold" id="countdown-timer">5</div>
+            <!-- ERROR STATE (hidden by default) -->
+            <div id="overlay-error" class="hidden">
+                <p class="text-xs font-sans uppercase tracking-widest text-red-400 mb-4">Something went wrong</p>
+                <h3 class="text-3xl md:text-4xl font-serif italic text-ink mb-6">Please try again.</h3>
+                <div class="w-full bg-sable h-[1px] mb-6"></div>
+                <p id="overlay-error-msg" class="text-stone font-sans text-sm mb-8">We couldn't send your message. Please try again or contact us directly.</p>
+                <button onclick="closeOverlay()" class="text-xs uppercase tracking-widest border-b border-ink pb-1 w-fit hover:text-gold transition font-sans">Close</button>
+            </div>
+
         </div>
     </div>
     <a href="https://wa.me/212679427371" target="_blank"

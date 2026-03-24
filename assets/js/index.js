@@ -163,8 +163,20 @@ if (window.matchMedia("(pointer: fine)").matches) {
     });
 }
 
-// 8. FORM & POPUP LOGIC (UPDATED)
-const phoneNumber = "212679427371";
+// 8. FORM & EMAIL LOGIC
+
+// --- CSRF token: fetch on page load ---
+function fetchCsrfToken() {
+    fetch('csrf-token.php')
+        .then(res => res.json())
+        .then(data => {
+            if (data.csrf_token) {
+                document.getElementById('csrf_token').value = data.csrf_token;
+            }
+        })
+        .catch(() => { /* silent — CSRF will fail server-side if token missing */ });
+}
+fetchCsrfToken();
 
 function triggerForm(serviceName) {
     document.getElementById('message').value = `Inquiry regarding: ${serviceName}. `;
@@ -172,42 +184,79 @@ function triggerForm(serviceName) {
     setTimeout(() => { document.getElementById('name').focus(); }, 1000);
 }
 
-function handleFormSubmit(e) {
-    e.preventDefault();
-    const name = document.getElementById('name').value;
-    const email = document.getElementById('email').value;
-    const message = document.getElementById('message').value;
-    const waUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(`*Neroli Inquiry*\nName: ${name}\nEmail: ${email}\n\n${message}`)}`;
-
-    // Get Elements
+// --- Overlay helpers ---
+function showOverlay() {
     const overlay = document.getElementById('waiting-overlay');
-    const timerEl = document.getElementById('countdown-timer');
-    let timeLeft = 5;
+    // Reset to loading state
+    document.getElementById('overlay-loading').classList.remove('hidden');
+    document.getElementById('overlay-success').classList.add('hidden');
+    document.getElementById('overlay-error').classList.add('hidden');
 
-    // Show Overlay with Fade In
     overlay.classList.remove('hidden');
+    overlay.style.display = 'flex';
     setTimeout(() => {
         overlay.classList.remove('opacity-0');
         overlay.querySelector('div').classList.remove('scale-95');
         overlay.querySelector('div').classList.add('scale-100');
     }, 10);
+}
 
-    // Start Countdown
-    timerEl.innerText = timeLeft;
-    const interval = setInterval(() => {
-        timeLeft--;
-        timerEl.innerText = timeLeft;
-        if (timeLeft <= 0) {
-            clearInterval(interval);
-            window.location.href = waUrl;
+function closeOverlay() {
+    const overlay = document.getElementById('waiting-overlay');
+    overlay.classList.add('opacity-0');
+    overlay.querySelector('div').classList.remove('scale-100');
+    overlay.querySelector('div').classList.add('scale-95');
+    setTimeout(() => {
+        overlay.classList.add('hidden');
+        overlay.style.display = '';
+    }, 300);
+}
+
+function handleFormSubmit(e) {
+    e.preventDefault();
+
+    const form = document.getElementById('whatsapp-form');
+    const name    = document.getElementById('name').value.trim();
+    const email   = document.getElementById('email').value.trim();
+    const message = document.getElementById('message').value.trim();
+
+    showOverlay();
+
+    const formData = new FormData();
+    formData.append('name',    name);
+    formData.append('email',   email);
+    formData.append('message', message);
+    formData.append('csrf_token', document.getElementById('csrf_token').value);
+    formData.append('website',    document.getElementById('website').value); // honeypot
+
+    fetch('send-email.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById('overlay-loading').classList.add('hidden');
+        if (data.success) {
+            document.getElementById('overlay-success').classList.remove('hidden');
+            form.reset();
+            fetchCsrfToken(); // refresh token for next submission
+        } else {
+            const errEl = document.getElementById('overlay-error-msg');
+            errEl.textContent = data.message || "We couldn't send your message. Please try again or contact us directly.";
+            document.getElementById('overlay-error').classList.remove('hidden');
         }
-    }, 1000);
+    })
+    .catch(() => {
+        document.getElementById('overlay-loading').classList.add('hidden');
+        document.getElementById('overlay-error-msg').textContent = "Network error. Please check your connection and try again.";
+        document.getElementById('overlay-error').classList.remove('hidden');
+    });
 }
 
 const inputs = document.querySelectorAll('input, textarea');
 inputs.forEach(input => {
-    input.addEventListener('focus', () => { input.nextElementSibling.style.top = '-12px'; input.nextElementSibling.style.fontSize = '0.6rem'; input.nextElementSibling.style.color = '#BFA078'; });
-    input.addEventListener('blur', () => { if (input.value === "") { input.nextElementSibling.style.top = '1rem'; input.nextElementSibling.style.fontSize = '0.75rem'; input.nextElementSibling.style.color = '#7A7A7A'; } });
+    input.addEventListener('focus', () => { if(input.nextElementSibling){ input.nextElementSibling.style.top = '-12px'; input.nextElementSibling.style.fontSize = '0.6rem'; input.nextElementSibling.style.color = '#BFA078'; }});
+    input.addEventListener('blur', () => { if (input.value === "" && input.nextElementSibling) { input.nextElementSibling.style.top = '1rem'; input.nextElementSibling.style.fontSize = '0.75rem'; input.nextElementSibling.style.color = '#7A7A7A'; } });
 });
 
 
